@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Parent Portal Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h1 class="display-4 text-primary">🏫 School Parent Portal Dashboard</h1>
+                <p class="lead text-muted">Real-time monitoring of WhatsApp bot interactions</p>
+                <div class="btn-group mb-3">
+                    <button class="btn btn-outline-primary" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="toggleAutoRefresh()">
+                        <i class="fas fa-clock"></i> Auto Refresh: <span id="auto-refresh-status">On</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                    <i class="fas fa-envelope me-1"></i> Total Messages</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-messages">
+                                    {% if metrics.total_messages %}{{ metrics.total_messages }}{% else %}0{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-envelope fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                    <i class="fas fa-check-circle me-1"></i> Success Rate</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="success-rate">
+                                    {% if metrics.success_rate %}{{ metrics.success_rate }}%{% else %}0%{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                    <i class="fas fa-users me-1"></i> Active Users (24h)</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="active-users">
+                                    {% if metrics.active_users %}{{ metrics.active_users }}{% else %}0{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-user-friends fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-warning shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                    <i class="fas fa-tasks me-1"></i> Pending Actions</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="pending-actions">
+                                    {% if metrics.pending_actions %}{{ metrics.pending_actions }}{% else %}0{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="row">
+            <!-- Message Log -->
+            <div class="col-lg-8 mb-4">
+                <div class="card shadow">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-comments me-2"></i>Live Message Stream
+                        </h6>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="filterMessages('all')">
+                                All
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="filterMessages('success')">
+                                Success
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="filterMessages('error')">
+                                Errors
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="message-log" id="messageLog" style="height: 500px; overflow-y: auto;">
+                            {% if messages %}
+                                {% for msg in messages %}
+                                <div class="message-item alert {% if msg[4] %}alert-success{% else %}alert-danger{% endif %}" 
+                                     data-type="{% if msg[4] %}success{% else %}error{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted">🕒 {{ msg[6] }} - </small>
+                                            <strong>From {{ msg[1] }}:</strong>
+                                            "{{ msg[2][:80] if msg[2] else 'No message' }}{% if msg[2] and msg[2]|length > 80 %}...{% endif %}"
+                                            <br>
+                                            <span class="{% if msg[4] %}text-success{% else %}text-danger{% endif %}">
+                                                {% if msg[4] %}
+                                                ✅ {{ msg[3][:80] if msg[3] else 'No response' }}{% if msg[3] and msg[3]|length > 80 %}...{% endif %}
+                                                {% else %}
+                                                ❌ {{ msg[5] if msg[5] else 'Error' }}
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                                    <p>No messages yet</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Success Chart -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-chart-pie me-2"></i>Success Rate
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="successChart" width="100%" height="200"></canvas>
+                    </div>
+                </div>
+                <div id="success-rate-data" data-success-rate="{{ metrics.success_rate if metrics.success_rate else 0 }}" style="display: none;"></div>
+
+                <!-- Pending Actions -->
+                <div class="card shadow">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-tasks me-2"></i>Pending Actions
+                        </h6>
+                        <span class="badge bg-warning" id="pending-count">
+                            {% if metrics.pending_actions %}{{ metrics.pending_actions }}{% else %}0{% endif %}
+                        </span>
+                    </div>
+                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                        <div id="pending-actions-list">
+                            {% if pending_actions %}
+                                {% for action in pending_actions %}
+                                <div class="alert alert-warning">
+                                    <strong>📞 {{ action[1].title() }} Request</strong>
+                                    <br>
+                                    <small>From: {{ action[2] }}</small>
+                                    <br>
+                                    <small class="text-muted">Time: {{ action[4] }}</small>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                    <p>No pending actions 🎉</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize success chart with proper defaults
+        
+        
+        const failureRate = 100 - successRate;
+
+        const ctx = document.getElementById('successChart').getContext('2d');
+        const successChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Success', 'Failures'],
+                datasets: [{
+                    data: [successRate, failureRate],
+                    backgroundColor: ['#28a745', '#dc3545'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        let autoRefreshInterval = setInterval(refreshData, 5000);
+        let autoRefreshEnabled = true;
+
+        function refreshData() {
+            fetch('/api/metrics')
+                .then(response => response.json())
+                .then(data => {
+                    updateMetrics(data);
+                });
+        }
+
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const statusElement = document.getElementById('auto-refresh-status');
+            
+            if (autoRefreshEnabled) {
+                autoRefreshInterval = setInterval(refreshData, 5000);
+                statusElement.textContent = 'On';
+                statusElement.classList.remove('text-danger');
+                statusElement.classList.add('text-success');
+            } else {
+                clearInterval(autoRefreshInterval);
+                statusElement.textContent = 'Off';
+                statusElement.classList.remove('text-success');
+                statusElement.classList.add('text-danger');
+            }
+        }
+
+        function updateMetrics(data) {
+            document.getElementById('total-messages').textContent = data.total_messages || 0;
+            document.getElementById('success-rate').textContent = (data.success_rate || 0) + '%';
+            document.getElementById('active-users').textContent = data.active_users || 0;
+            document.getElementById('pending-actions').textContent = data.pending_actions || 0;
+            document.getElementById('pending-count').textContent = data.pending_actions || 0;
+
+            // Update chart
+            const successRate = data.success_rate || 0;
+            const failureRate = 100 - successRate;
+            successChart.data.datasets[0].data = [successRate, failureRate];
+            successChart.update();
+        }
+
+        function filterMessages(type) {
+            const messages = document.querySelectorAll('.message-item');
+            messages.forEach(msg => {
+                if (type === 'all' || msg.dataset.type === type) {
+                    msg.style.display = 'block';
+                } else {
+                    msg.style.display = 'none';
+                }
+            });
+        }
+
+        // Initial scroll to bottom
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageLog = document.getElementById('messageLog');
+            if (messageLog) {
+                messageLog.scrollTop = messageLog.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
