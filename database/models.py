@@ -1,12 +1,12 @@
-import psycopg2
+import psycopg
 from config import DATABASE_CONFIG
 
 def get_db_connection():
     """Get database connection"""
     try:
-        conn = psycopg2.connect(**DATABASE_CONFIG)
+        conn = psycopg.connect(**DATABASE_CONFIG)
         return conn
-    except psycopg2.Error as e:
+    except psycopg.Error as e:
         print(f"Database connection error: {e}")
         return None
 
